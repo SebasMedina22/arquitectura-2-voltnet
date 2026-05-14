@@ -1,0 +1,21 @@
+@startuml VoltNet - C4 Nivel 1 - Contexto del Sistema
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title VoltNet · C4 Nivel 1 — Contexto del Sistema
+
+LAYOUT_WITH_LEGEND()
+
+Person(driver, "Conductor EV", "Dueño de un vehículo eléctrico que llega a una estación de carga.")
+Person(operator, "Operador VoltNet", "Personal de la empresa que supervisa estaciones y consumos.")
+
+System(voltnet, "VoltNet Platform", "Orquesta el inicio/fin de sesiones de carga, valida la red eléctrica y la solvencia del usuario, y registra el consumo para facturación posterior.")
+
+System_Ext(grid, "Sistema de Red Eléctrica", "Provee lecturas en tiempo real de la carga total que la red soporta por barrio.")
+System_Ext(payment_gw, "Pasarela de Pago", "Procesa cobros de las facturas generadas por VoltNet (fuera del alcance del proyecto).")
+
+Rel(driver, voltnet, "Inicia y termina sesiones de carga", "HTTPS")
+Rel(operator, voltnet, "Consulta estaciones, sesiones y consumos", "HTTPS")
+Rel(voltnet, grid, "Consulta carga actual de la estación", "REST sync")
+Rel(voltnet, payment_gw, "Envía facturas para cobro", "Async (futuro)")
+
+@enduml

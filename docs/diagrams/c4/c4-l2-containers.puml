@@ -1,0 +1,65 @@
+@startuml VoltNet - C4 Nivel 2 - Contenedores
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title VoltNet · C4 Nivel 2 — Diagrama de Contenedores
+
+LAYOUT_WITH_LEGEND()
+LAYOUT_TOP_DOWN()
+
+Person(driver, "Conductor EV", "Inicia y termina cargas en la estación")
+Person(operator, "Operador VoltNet", "Supervisa estaciones y sesiones")
+
+System_Boundary(voltnet, "VoltNet Platform") {
+
+  Container(ui, "UI Web", "React 18 + Vite", "SPA para iniciar/terminar carga y ver historial de sesiones [BONUS]")
+
+  Container(gateway, "API Gateway", "Nginx 1.27", "Punto de entrada único. Enruta /charge, /grid, /billing [BONUS]")
+
+  Container(orchestrator, "MS-ChargeOrchestrator", "Java 25 · Spring Boot 3.4 · Hexagonal", "MS Principal. Orquesta sesiones de carga, valida las 3 reglas de negocio, publica eventos de consumo.")
+  ContainerDb(orch_db, "Orchestrator DB", "MySQL 8", "charge_sessions, users (proyección de solvencia), outbox_events")
+
+  Container(gridload, "MS-GridLoad", "Java 25 · Spring Boot 3.4", "MS Síncrono. Expone GET /grid/load para consultar la carga total en kW de una estación.")
+  ContainerDb(grid_db, "GridLoad Store", "Redis 7", "Clave-valor en memoria: station:{id}:load_kw")
+
+  Container(billing, "MS-Billing", "Java 25 · Spring Boot 3.4", "MS Asíncrono. Consume eventos de consumo, genera facturas, publica eventos de mora.")
+  ContainerDb(billing_db, "Billing DB", "PostgreSQL 16", "invoices, user_debts, billing_events")
+
+  Container(broker, "Message Broker", "RabbitMQ 3.13", "Exchange topic 'voltnet.events' · Colas: session.completed.q, user.debt.updated.q")
+}
+
+System_Boundary(observability, "Observabilidad") {
+  Container(prometheus, "Prometheus", "Métricas", "Scrapea /actuator/prometheus de los 3 MS")
+  Container(grafana, "Grafana", "Dashboards", "Salud de servicios, latencia p95, throughput")
+  Container(jaeger, "Jaeger", "Trazas distribuidas", "Recibe traces vía OpenTelemetry")
+}
+
+' --- Relaciones de usuario ---
+Rel(driver, ui, "Usa", "HTTPS")
+Rel(operator, ui, "Usa", "HTTPS")
+Rel(ui, gateway, "Llama API", "HTTPS/JSON")
+Rel(gateway, orchestrator, "Enruta /charge/*", "HTTP/JSON")
+
+' --- MS Principal a sus dependencias ---
+Rel(orchestrator, orch_db, "Lee/escribe", "JDBC")
+Rel(orchestrator, gridload, "GET /grid/load (sync, R1)", "REST · Feign")
+Rel(orchestrator, broker, "Publica session.completed (R3)", "AMQP")
+Rel(orchestrator, broker, "Consume user.debt.updated", "AMQP")
+
+' --- MS Sync ---
+Rel(gridload, grid_db, "Lee carga actual", "Redis protocol")
+
+' --- MS Async ---
+Rel(billing, broker, "Consume session.completed", "AMQP")
+Rel(billing, broker, "Publica user.debt.updated", "AMQP")
+Rel(billing, billing_db, "Lee/escribe facturas y deudas", "JDBC")
+
+' --- Observabilidad ---
+Rel(prometheus, orchestrator, "scrape /actuator/prometheus", "HTTP")
+Rel(prometheus, gridload, "scrape /actuator/prometheus", "HTTP")
+Rel(prometheus, billing, "scrape /actuator/prometheus", "HTTP")
+Rel(grafana, prometheus, "Lee métricas", "HTTP")
+Rel(orchestrator, jaeger, "Envía traces", "OTLP")
+Rel(gridload, jaeger, "Envía traces", "OTLP")
+Rel(billing, jaeger, "Envía traces", "OTLP")
+
+@enduml

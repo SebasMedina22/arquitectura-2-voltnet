@@ -4,10 +4,20 @@ Diagramas en notación **C4 Model** usando **PlantUML** con la librería oficial
 
 ## Niveles
 
-| Nivel | Archivo | Estado |
-|---|---|---|
-| C4 L1 — Contexto | [`c4-l1-context.puml`](c4-l1-context.puml) | Pendiente — Fase 1 |
-| C4 L2 — Contenedores (requerido por la rúbrica) | [`c4-l2-containers.puml`](c4-l2-containers.puml) | Pendiente — Fase 1 |
+| Nivel | Fuente PlantUML | PNG renderizado | Estado |
+|---|---|---|---|
+| C4 L1 — Contexto | [`c4-l1-context.puml`](c4-l1-context.puml) | [`c4-l1-context.png`](c4-l1-context.png) | ✅ Listo |
+| C4 L2 — Contenedores (requerido por la rúbrica) | [`c4-l2-containers.puml`](c4-l2-containers.puml) | [`c4-l2-containers.png`](c4-l2-containers.png) | ✅ Listo |
+
+## Vista rápida
+
+**C4 Nivel 2 — Diagrama de Contenedores:**
+
+![C4 L2](c4-l2-containers.png)
+
+**C4 Nivel 1 — Diagrama de Contexto:**
+
+![C4 L1](c4-l1-context.png)
 
 ## Cómo renderizar
 
