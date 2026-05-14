@@ -176,5 +176,4 @@ Ver imagen renderizada en el README del repositorio para la entrega final.
 
 ## Anexos
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — Documento maestro explicativo para el equipo, con detalles de cada decisión, guion de sustentación oral y glosario.
 - [`README.md`](../README.md) — Tabla de entregables, stack tecnológico, instrucciones de despliegue.

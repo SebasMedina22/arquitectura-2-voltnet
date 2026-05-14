@@ -33,7 +33,6 @@ VoltNet es un ecosistema de microservicios que orquesta la carga de vehículos e
 | Entregable | Ubicación |
 |---|---|
 | Documento RFC (PDF) | [`docs/RFC.md`](docs/RFC.md) → exportar a PDF |
-| Arquitectura explicada (para el equipo) | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Diagrama C4 Nivel 1 (Contexto) | [`docs/diagrams/c4/c4-l1-context.puml`](docs/diagrams/c4/c4-l1-context.puml) |
 | Diagrama C4 Nivel 2 (Contenedores) | [`docs/diagrams/c4/c4-l2-containers.puml`](docs/diagrams/c4/c4-l2-containers.puml) |
 | MS-ChargeOrchestrator (código) | [`services/ms-charge-orchestrator/`](services/ms-charge-orchestrator/) |
@@ -85,7 +84,7 @@ URLs principales tras levantar:
 | UI | React 18 + Vite | Bonus — SPA mínima |
 | Documentación API | springdoc-openapi | Swagger UI autogenerado |
 
-Para la justificación de cada decisión y los trade-offs analizados, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Para la justificación de cada decisión y el análisis de trade-offs, ver [`docs/RFC.md`](docs/RFC.md).
 
 ---
 
@@ -100,4 +99,4 @@ Para la justificación de cada decisión y los trade-offs analizados, ver [`docs
 
 ## Estado del proyecto
 
-🚧 **En construcción** — ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para el plan completo.
+🚧 **En construcción** — ver [`docs/RFC.md`](docs/RFC.md) para el diseño detallado.

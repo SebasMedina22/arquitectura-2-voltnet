@@ -52,3 +52,6 @@ HELP.md
 # --- Archivos internos del workflow con Claude (no se versionan) ---
 CLAUDE.md
 ROADMAP.md
+
+# --- Documentos de uso interno del equipo (no entregables públicos) ---
+docs/ARCHITECTURE.md
