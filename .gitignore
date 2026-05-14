@@ -1,0 +1,50 @@
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# --- IDE ---
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.classpath
+.project
+.settings/
+.factorypath
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Node / UI ---
+node_modules/
+ui/dist/
+ui/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Docker ---
+*.pid
+
+# --- Logs / runtime ---
+logs/
+*.log
+
+# --- Env files con secretos ---
+.env
+.env.local
+.env.*.local
+
+# --- Spring Boot ---
+*.original
+HELP.md
