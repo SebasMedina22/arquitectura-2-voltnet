@@ -50,22 +50,58 @@ VoltNet es un ecosistema de microservicios que orquesta la carga de vehículos e
 > Requisitos: Docker Desktop corriendo. Nada más.
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
+
+El primer build tarda ~3-5 min (descarga imágenes + compila los 3 servicios). Después arranca en segundos. Verifica con `docker compose ps` que los 10 contenedores estén `Up` y `(healthy)`.
 
 URLs principales tras levantar:
 
-| Servicio | URL |
-|---|---|
-| API Gateway (Nginx) | http://localhost |
-| MS-ChargeOrchestrator Swagger | http://localhost:8081/swagger-ui.html |
-| MS-GridLoad Swagger | http://localhost:8082/swagger-ui.html |
-| MS-Billing Swagger | http://localhost:8083/swagger-ui.html |
-| RabbitMQ Management | http://localhost:15672 (guest/guest) |
-| Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:3000 (admin/admin) |
-| Jaeger UI | http://localhost:16686 |
-| UI (bonus) | http://localhost:5173 |
+| Servicio | URL | Credenciales |
+|---|---|---|
+| MS-ChargeOrchestrator Swagger | http://localhost:8081/swagger-ui.html | — |
+| MS-GridLoad Swagger | http://localhost:8082/swagger-ui.html | — |
+| MS-Billing Swagger | http://localhost:8083/swagger-ui.html | — |
+| RabbitMQ Management | http://localhost:15672 | voltnet / voltnet |
+| Prometheus | http://localhost:9090 | — |
+| Grafana (dashboard "VoltNet Health") | http://localhost:3000 | admin / admin (o anonymous viewer) |
+| Jaeger UI | http://localhost:16686 | — |
+| API Gateway (Nginx, Fase 6) | http://localhost | — |
+| UI (Fase 6) | http://localhost:5173 | — |
+
+### Demo rápida de las 3 reglas de negocio
+
+```bash
+# R1 OK: estación con carga baja
+curl -X POST http://localhost:8081/sessions/start \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"USR-001","stationId":"STN-001"}'
+# -> 201 Created
+
+# R1 bloquea: estación sobrecargada (105 kW > 100 kW)
+curl -X POST http://localhost:8081/sessions/start \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"USR-001","stationId":"STN-003"}'
+# -> 422 R1_GRID_OVERLOADED
+
+# R2 bloquea: usuario con deuda > 30 días (seed: USR-003 con 45 d)
+curl -X POST http://localhost:8081/sessions/start \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"USR-003","stationId":"STN-001"}'
+# -> 422 R2_USER_NOT_SOLVENT
+
+# R3: detener Billing, iniciar+cerrar sesión, levantar Billing, ver la factura creada
+docker compose stop ms-billing
+SID=$(curl -s -X POST http://localhost:8081/sessions/start \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"USR-001","stationId":"STN-001"}' | jq -r .sessionId)
+curl -X POST "http://localhost:8081/sessions/$SID/stop" \
+  -H "Content-Type: application/json" -d '{"kwhConsumed":18.7}'
+# -> 200 OK aunque Billing esté abajo (evento queda en outbox)
+docker compose start ms-billing
+sleep 8 && curl "http://localhost:8083/invoices?userId=USR-001"
+# -> factura creada por el consumer cuando Billing volvió
+```
 
 ---
 
@@ -99,4 +135,14 @@ Para la justificación de cada decisión y el análisis de trade-offs, ver [`doc
 
 ## Estado del proyecto
 
-🚧 **En construcción** — ver [`docs/RFC.md`](docs/RFC.md) para el diseño detallado.
+| Fase | Estado |
+|---|---|
+| Documentación de diseño (C4 L1/L2, RFC, ARCHITECTURE) | ✅ |
+| MS-GridLoad (REST + Redis) | ✅ |
+| MS-Billing (RabbitMQ + PostgreSQL + Outbox idempotente) | ✅ |
+| MS-ChargeOrchestrator (hexagonal, los 4 GoF, R1/R2/R3) | ✅ |
+| Docker Compose + Observabilidad (Prometheus/Grafana/Jaeger) | ✅ |
+| API Gateway Nginx + UI (bonus) | 🚧 |
+| Pulido final + RFC PDF | 🚧 |
+
+Para el diseño detallado y el análisis de trade-offs, ver [`docs/RFC.md`](docs/RFC.md).

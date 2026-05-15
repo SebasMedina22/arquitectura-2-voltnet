@@ -40,7 +40,7 @@ class ProcessChargeSessionServiceTest {
     @Test
     void crea_factura_PENDING_a_partir_del_evento() {
         ChargeSessionCompletedEvent event = new ChargeSessionCompletedEvent(
-                "S-001", "U-042", "STN-001", 10.0, FIXED);
+                "S-001", "USR-042", "STN-001", 10.0, FIXED);
 
         Invoice result = service.process(event);
 
@@ -53,7 +53,7 @@ class ProcessChargeSessionServiceTest {
     @Test
     void es_idempotente_para_mismo_sessionId() {
         ChargeSessionCompletedEvent event = new ChargeSessionCompletedEvent(
-                "S-001", "U-042", "STN-001", 10.0, FIXED);
+                "S-001", "USR-042", "STN-001", 10.0, FIXED);
 
         Invoice first  = service.process(event);
         Invoice second = service.process(event);

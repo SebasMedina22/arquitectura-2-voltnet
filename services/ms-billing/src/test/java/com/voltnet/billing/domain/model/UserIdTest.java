@@ -9,12 +9,12 @@ class UserIdTest {
 
     @Test
     void acepta_formato_valido() {
-        assertEquals("U-042", UserId.of("U-042").value());
+        assertEquals("USR-042", UserId.of("USR-042").value());
     }
 
     @Test
     void normaliza_a_mayusculas() {
-        assertEquals("U-ABC", UserId.of("u-abc").value());
+        assertEquals("USR-ABC", UserId.of("usr-abc").value());
     }
 
     @Test
@@ -30,7 +30,8 @@ class UserIdTest {
     @Test
     void rechaza_formato_invalido() {
         assertThrows(IllegalArgumentException.class, () -> UserId.of("USER-1"));
-        assertThrows(IllegalArgumentException.class, () -> UserId.of("U-"));
+        assertThrows(IllegalArgumentException.class, () -> UserId.of("USR-"));
+        assertThrows(IllegalArgumentException.class, () -> UserId.of("U-001"));
         assertThrows(IllegalArgumentException.class, () -> UserId.of("42"));
     }
 }

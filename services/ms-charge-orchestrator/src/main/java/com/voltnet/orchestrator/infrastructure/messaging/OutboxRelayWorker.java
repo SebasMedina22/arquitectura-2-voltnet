@@ -5,6 +5,9 @@ import com.voltnet.orchestrator.infrastructure.persistence.repository.OutboxEven
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -51,10 +55,18 @@ public class OutboxRelayWorker {
 
         for (OutboxEventJpaEntity e : pending) {
             try {
-                rabbitTemplate.convertAndSend(
+                // Publicamos los bytes del JSON tal cual, con content-type=application/json.
+                // Si pasamos por convertAndSend(String), el Jackson converter re-envuelve
+                // el string en comillas y el consumer fallaria al deserializar.
+                Message msg = MessageBuilder
+                        .withBody(e.getPayload().getBytes(StandardCharsets.UTF_8))
+                        .setContentType(MessageProperties.CONTENT_TYPE_JSON)
+                        .setContentEncoding(StandardCharsets.UTF_8.name())
+                        .build();
+                rabbitTemplate.send(
                         RabbitMqConfig.CHARGE_EXCHANGE,
                         e.getRoutingKey(),
-                        e.getPayload()
+                        msg
                 );
                 e.markPublished(Instant.now(clock));
                 repo.save(e);

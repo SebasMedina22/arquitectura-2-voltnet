@@ -31,7 +31,7 @@ public class GridLoadFeignAdapter implements GridLoadPort {
     @CircuitBreaker(name = "gridload", fallbackMethod = "rejectOnDoubt")
     public StationLoadSnapshot fetchLoad(StationId stationId) {
         GridLoadResponse resp = client.fetchLoad(stationId.value());
-        return new StationLoadSnapshot(stationId, resp.totalLoadKw(), resp.overloaded());
+        return new StationLoadSnapshot(stationId, resp.currentLoadKw(), resp.overloaded());
     }
 
     @SuppressWarnings("unused")

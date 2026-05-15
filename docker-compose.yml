@@ -1,0 +1,246 @@
+# VoltNet — Orquestacion completa del ecosistema
+# Levanta: 3 microservicios + 3 DBs + RabbitMQ + Prometheus + Grafana + Jaeger.
+# Uso: docker compose up -d --build
+#
+# Mapping de puertos host:
+#   ms-charge-orchestrator   -> :8081
+#   ms-grid-load             -> :8082
+#   ms-billing               -> :8083
+#   MySQL (Orchestrator)     -> :3306
+#   Redis (GridLoad)         -> :6379
+#   PostgreSQL (Billing)     -> :5433
+#   RabbitMQ AMQP            -> :5672
+#   RabbitMQ Management UI   -> :15672  (voltnet / voltnet)
+#   Prometheus               -> :9090
+#   Grafana                  -> :3000   (anonymous viewer; admin/admin)
+#   Jaeger UI                -> :16686
+#   Jaeger OTLP gRPC/HTTP    -> :4317 / :4318
+#
+# Profile compose:
+#   - default: levanta todo.
+
+name: voltnet
+
+networks:
+  voltnet-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  pg-data:
+  rabbitmq-data:
+  prometheus-data:
+  grafana-data:
+
+services:
+
+  # ---------- Bases de datos ----------
+
+  mysql-orchestrator:
+    image: mysql:8.4
+    container_name: voltnet-mysql-orchestrator
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootroot
+      MYSQL_DATABASE: orchestrator
+      MYSQL_USER: orchestrator
+      MYSQL_PASSWORD: orchestrator
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [voltnet-net]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uorchestrator", "-porchestrator"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis-gridload:
+    image: redis:7-alpine
+    container_name: voltnet-redis-gridload
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks: [voltnet-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres-billing:
+    image: postgres:16-alpine
+    container_name: voltnet-postgres-billing
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: billing
+      POSTGRES_USER: billing
+      POSTGRES_PASSWORD: billing
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks: [voltnet-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billing -d billing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Broker ----------
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: voltnet-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: voltnet
+      RABBITMQ_DEFAULT_PASS: voltnet
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks: [voltnet-net]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ---------- Observabilidad ----------
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: voltnet-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    networks: [voltnet-net]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:14269/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: voltnet-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [voltnet-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: voltnet-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [voltnet-net]
+    depends_on:
+      prometheus:
+        condition: service_started
+
+  # ---------- Microservicios ----------
+
+  ms-charge-orchestrator:
+    build:
+      context: ./services/ms-charge-orchestrator
+    image: voltnet/ms-charge-orchestrator:0.1.0
+    container_name: voltnet-ms-charge-orchestrator
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OTEL_SERVICE_NAME: ms-charge-orchestrator
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    ports:
+      - "8081:8081"
+    networks: [voltnet-net]
+    depends_on:
+      mysql-orchestrator:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  ms-grid-load:
+    build:
+      context: ./services/ms-grid-load
+    image: voltnet/ms-grid-load:0.1.0
+    container_name: voltnet-ms-grid-load
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OTEL_SERVICE_NAME: ms-grid-load
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    ports:
+      - "8082:8082"
+    networks: [voltnet-net]
+    depends_on:
+      redis-gridload:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  ms-billing:
+    build:
+      context: ./services/ms-billing
+    image: voltnet/ms-billing:0.1.0
+    container_name: voltnet-ms-billing
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      OTEL_SERVICE_NAME: ms-billing
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    ports:
+      - "8083:8083"
+    networks: [voltnet-net]
+    depends_on:
+      postgres-billing:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      jaeger:
+        condition: service_started

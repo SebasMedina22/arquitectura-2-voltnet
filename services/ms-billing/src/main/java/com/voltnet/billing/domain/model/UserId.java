@@ -5,11 +5,13 @@ import java.util.regex.Pattern;
 
 /**
  * Value object: identificador de usuario.
- * Invariante defensiva: formato U-XXX (X alfanumerico), no vacio.
+ * Invariante defensiva: formato USR-XXX (X alfanumerico), no vacio.
+ * Compatible con el contrato emitido por MS-ChargeOrchestrator (events
+ * ChargeSessionCompleted y UserDebtUpdated comparten este formato).
  */
 public final class UserId {
 
-    private static final Pattern PATTERN = Pattern.compile("^U-[A-Z0-9]{3,}$");
+    private static final Pattern PATTERN = Pattern.compile("^USR-[A-Z0-9]{1,16}$");
 
     private final String value;
 
@@ -24,7 +26,7 @@ public final class UserId {
         String upper = value.toUpperCase();
         if (!PATTERN.matcher(upper).matches()) {
             throw new IllegalArgumentException(
-                    "UserId no cumple formato U-XXX: " + value);
+                    "UserId no cumple formato USR-XXX: " + value);
         }
         return new UserId(upper);
     }

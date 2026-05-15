@@ -21,7 +21,7 @@ class InvoiceTest {
     private Invoice newPending() {
         return Invoice.createPending(
                 SessionId.of("S-001"),
-                UserId.of("U-042"),
+                UserId.of("USR-042"),
                 Money.of(new BigDecimal("5000.00"), "COP"),
                 NOW,
                 DUE
@@ -83,7 +83,7 @@ class InvoiceTest {
     @Test
     void dueAt_debe_ser_posterior_a_createdAt() {
         assertThrows(IllegalArgumentException.class,
-                () -> Invoice.createPending(SessionId.of("S-1"), UserId.of("U-042"),
+                () -> Invoice.createPending(SessionId.of("S-1"), UserId.of("USR-042"),
                         Money.of(BigDecimal.TEN, "COP"), NOW, NOW));
     }
 

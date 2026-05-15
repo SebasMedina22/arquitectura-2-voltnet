@@ -52,21 +52,21 @@ class MarkOverdueInvoicesServiceTest {
 
     @Test
     void marca_overdue_facturas_pending_vencidas() {
-        savePending("S-1", "U-001", NOW.minus(Duration.ofMinutes(5)), NOW.minus(Duration.ofMinutes(1)));
-        savePending("S-2", "U-002", NOW.minus(Duration.ofMinutes(10)), NOW.minus(Duration.ofMinutes(5)));
+        savePending("S-1", "USR-001", NOW.minus(Duration.ofMinutes(5)), NOW.minus(Duration.ofMinutes(1)));
+        savePending("S-2", "USR-002", NOW.minus(Duration.ofMinutes(10)), NOW.minus(Duration.ofMinutes(5)));
 
         int count = service.markAllOverdue();
 
         assertEquals(2, count);
         invoices.findOverdueCandidates(NOW);
-        long pendingRemaining = invoices.findByUserId(UserId.of("U-001")).stream()
+        long pendingRemaining = invoices.findByUserId(UserId.of("USR-001")).stream()
                 .filter(i -> i.status() == InvoiceStatus.PENDING).count();
         assertEquals(0, pendingRemaining);
     }
 
     @Test
     void no_toca_facturas_no_vencidas() {
-        savePending("S-1", "U-001", NOW, NOW.plus(Duration.ofMinutes(2)));
+        savePending("S-1", "USR-001", NOW, NOW.plus(Duration.ofMinutes(2)));
 
         int count = service.markAllOverdue();
 
@@ -76,18 +76,18 @@ class MarkOverdueInvoicesServiceTest {
 
     @Test
     void publica_UserDebtUpdated_por_cada_factura_marcada() {
-        savePending("S-1", "U-001", NOW.minus(Duration.ofMinutes(5)), NOW.minus(Duration.ofMinutes(1)));
+        savePending("S-1", "USR-001", NOW.minus(Duration.ofMinutes(5)), NOW.minus(Duration.ofMinutes(1)));
 
         service.markAllOverdue();
 
         assertEquals(1, publisher.events().size());
-        assertEquals("U-001", publisher.events().get(0).userId());
+        assertEquals("USR-001", publisher.events().get(0).userId());
     }
 
     @Test
     void overdueDays_se_calcula_desde_dueAt() {
         Instant dueAt = NOW.minus(Duration.ofDays(3));
-        savePending("S-1", "U-001", dueAt.minus(Duration.ofMinutes(1)), dueAt);
+        savePending("S-1", "USR-001", dueAt.minus(Duration.ofMinutes(1)), dueAt);
 
         service.markAllOverdue();
 

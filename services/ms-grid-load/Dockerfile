@@ -22,9 +22,9 @@ ENV JAVA_TOOL_OPTIONS="-javaagent:/otel/opentelemetry-javaagent.jar"
 ENV OTEL_SERVICE_NAME=ms-grid-load
 ENV SPRING_PROFILES_ACTIVE=docker
 
-EXPOSE 8081
+EXPOSE 8082
 
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:8081/actuator/health | grep -q '"status":"UP"' || exit 1
+  CMD wget -qO- http://localhost:8082/actuator/health | grep -q '"status":"UP"' || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

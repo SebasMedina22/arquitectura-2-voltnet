@@ -1,0 +1,45 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: voltnet
+    env: local
+
+scrape_configs:
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: ms-charge-orchestrator
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['ms-charge-orchestrator:8081']
+        labels:
+          service: ms-charge-orchestrator
+          tier: core
+
+  - job_name: ms-grid-load
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['ms-grid-load:8082']
+        labels:
+          service: ms-grid-load
+          tier: sync
+
+  - job_name: ms-billing
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['ms-billing:8083']
+        labels:
+          service: ms-billing
+          tier: async
+
+  - job_name: rabbitmq
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['rabbitmq:15692']
+        labels:
+          service: rabbitmq
+          tier: broker
