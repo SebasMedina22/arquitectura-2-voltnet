@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:mysql://mysql-orchestrator:3306/orchestrator?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+  rabbitmq:
+    host: rabbitmq
+
+gridload:
+  base-url: http://ms-grid-load:8082
