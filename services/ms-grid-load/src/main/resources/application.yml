@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: ms-grid-load
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 500ms
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ms-grid-load
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+gridload:
+  seed:
+    enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.voltnet.gridload: DEBUG

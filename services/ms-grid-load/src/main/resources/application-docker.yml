@@ -1,0 +1,9 @@
+spring:
+  data:
+    redis:
+      host: redis-gridload
+      port: 6379
+
+gridload:
+  seed:
+    enabled: true
