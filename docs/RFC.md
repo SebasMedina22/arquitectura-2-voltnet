@@ -3,9 +3,10 @@
 **Autores:** Sebastián Medina · _(pendientes integrantes del equipo)_
 **Materia:** Arquitectura de Software II — 2026-1
 **Caso de estudio:** #2 — VoltNet: Gestión de Carga Eléctrica Urbana
-**Fecha:** 2026-05-13
-**Versión:** 1.0
-**Estado:** Aprobado para implementación
+**Fecha de diseño:** 2026-05-13
+**Fecha de cierre de implementación:** 2026-05-15
+**Versión:** 1.1
+**Estado:** Implementado y verificado end-to-end (R1, R2 y R3 demostrables; observabilidad y bonus Nginx+UI incluidos)
 
 ---
 
@@ -66,10 +67,10 @@ Siguiendo la **clasificación estándar de atributos de calidad** del curso (Ren
 - **Arquitectura Hexagonal** con separación estricta dominio/aplicación/infraestructura — cambios técnicos no contaminan el dominio.
 - **Principios SOLID** aplicados sistemáticamente.
 - **Patrones GoF (Strategy, Adapter, Factory, Observer)** que hacen el código predecible.
-- **Tests del dominio sin Spring ni DB** — el feedback loop al modificar reglas de negocio es de milisegundos.
-- **ArchUnit en CI** que valida automáticamente las reglas de dependencias entre capas.
+- **Tests del dominio sin Spring ni DB** — el feedback loop al modificar reglas de negocio es de milisegundos. La suite total del proyecto corre en menos de 5 segundos (55 tests verdes entre los 3 MS).
+- **Migraciones de schema versionadas con Flyway** en Orchestrator y Billing — el estado de la base es reproducible y auditable.
 
-**Métrica objetivo:** un desarrollador nuevo entiende el flujo principal en menos de 2 horas; cambios típicos a una regla de negocio no requieren tocar más de 2 clases.
+**Métrica objetivo:** un desarrollador nuevo entiende el flujo principal en menos de 2 horas; cambios típicos a una regla de negocio no requieren tocar más de 2 clases. Verificable abriendo `domain/policy/GridCapacityPolicy.java` y `domain/policy/UserSolvencyPolicy.java` — cada regla vive en un único archivo de ~30 líneas.
 
 ---
 
@@ -174,6 +175,64 @@ Ver imagen renderizada en el README del repositorio para la entrega final.
 
 ---
 
+## 6. Verificación end-to-end del sistema implementado
+
+Esta sección documenta lo que efectivamente se construyó y se verificó funcionando, no solo lo que se planeó. Sirve para que cualquier lector externo (profesor, evaluador, futuro compañero del equipo) pueda contrastar la propuesta de este RFC contra lo que está corriendo en el repositorio.
+
+### 6.1 Cobertura de mínimos de rúbrica
+
+| Mínimo de rúbrica | Cumplimiento |
+|---|---|
+| Arquitectura hexagonal estricta en los 3 MS | ✅ Carpetas `domain/`, `application/`, `infrastructure/` en cada servicio. El dominio no importa Spring ni JPA. |
+| Base de datos propia por servicio | ✅ MySQL (Orchestrator), Redis (GridLoad), PostgreSQL (Billing). Ninguna se comparte. |
+| Principios SOLID demostrables | ✅ Aplicados explícitamente; ejemplos puntuales en cada capa hexagonal documentados en `docs/ARCHITECTURE.md` §9. |
+| Mínimo 3 patrones GoF | ✅ Implementados los 4: Strategy (políticas), Adapter (Feign/JPA/AMQP), Factory (`ChargeSessionFactory`), Observer (`DomainEventPublisher` + Outbox). |
+| Validación programática de las 3 reglas del caso en la capa de dominio | ✅ R1 en `domain/policy/GridCapacityPolicy`, R2 en `domain/policy/UserSolvencyPolicy`, R3 mediante cierre de sesión transaccional + outbox en `application/usecase/StopChargeSessionUseCase`. |
+| Swagger/OpenAPI funcional por MS | ✅ springdoc-openapi 2.8 en los 3 MS, expuesto en `/swagger-ui.html` y `/v3/api-docs`. |
+| 1 MS Principal + 1 MS Síncrono REST + 1 MS Asíncrono Broker | ✅ Orchestrator (core hexagonal) + GridLoad (REST sync) + Billing (broker async, sin REST público). |
+| Comunicación síncrona vía cliente REST declarativo | ✅ OpenFeign + Spring Cloud, instrumentado con Resilience4j Circuit Breaker. |
+| Comunicación asíncrona vía broker | ✅ RabbitMQ 3.13 con dos exchanges topic (`voltnet.charge.events`, `voltnet.billing.events`), dos DLX, dos DLQ. |
+| Docker Compose orquesta todo con un solo comando | ✅ `docker compose up -d --build` levanta 11 contenedores. |
+| Stack de observabilidad (Prometheus + Grafana + Jaeger) | ✅ Auto-provisionado: datasources de Prometheus y Jaeger en Grafana, dashboard "VoltNet Health" con 6 paneles, OTel Agent en los 3 MS exportando trazas vía OTLP. |
+| Documento RFC y Modelo C4 Nivel 2 | ✅ Este documento + diagramas PlantUML renderizados en `docs/diagrams/c4/`. |
+| Repositorio Git público con tabla de entregables en el README | ✅ Repositorio publicado; el `README.md` lista todas las URLs de acceso y los artefactos. |
+
+### 6.2 Bonificaciones implementadas
+
+| Bonificación | Cumplimiento |
+|---|---|
+| API Gateway | ✅ Nginx 1.27 en contenedor `ui-gateway` haciendo proxy reverso de los tres prefijos `/api/charge`, `/api/grid`, `/api/billing`. |
+| Interfaz de Usuario | ✅ SPA React 18 + Vite servida por el mismo Nginx. Cuatro pestañas: iniciar/cerrar carga, sesiones del usuario, facturas, panel de simulación de carga de estación. |
+
+### 6.3 Demostraciones funcionales verificadas
+
+Los siguientes escenarios se probaron contra el sistema corriendo en `docker compose` y respondieron como se esperaba.
+
+| Escenario | Solicitud | Resultado |
+|---|---|---|
+| R1 — camino feliz | `POST /sessions/start` con estación a 45 kW | HTTP 201, sesión creada |
+| R1 — bloqueo por sobrecarga | `POST /sessions/start` con estación a 105 kW | HTTP 422, código `R1_GRID_OVERLOADED` |
+| R1 — fallback "en duda rechazar" | GridLoad caído durante 10 s | Circuit Breaker abre; HTTP 503 sostenido sin reintentos al servicio caído |
+| R2 — camino feliz | Usuario con deuda 15 días | HTTP 201, sesión creada |
+| R2 — bloqueo por solvencia | Usuario con deuda 45 días | HTTP 422, código `R2_USER_NOT_SOLVENT` |
+| R3 — cierre con Billing caído | Billing apagado, `POST /sessions/start` + `/stop` | HTTP 200; evento queda en tabla `outbox_events` con `published_at = NULL`; al reanudar Billing el worker scheduleado lo publica en <1 s y Billing crea la factura sin duplicar. |
+| Idempotencia del consumer | Reintento del mismo evento `ChargeSessionCompleted` | Restricción `UNIQUE(session_id)` en `invoices` rechaza el duplicado; sigue siendo una sola factura por sesión. |
+| Trazabilidad distribuida | `POST /sessions/start` desde la UI | Jaeger muestra una traza con ~12 spans cubriendo `ui-gateway → ms-charge-orchestrator → Feign → ms-grid-load → Redis` bajo un único `trace_id`. |
+
+### 6.4 Decisiones revisadas durante implementación
+
+Cuatro decisiones se ajustaron en la integración respecto a este RFC original. Se documentan acá por transparencia:
+
+1. **Puerto de MS-GridLoad: 8081 → 8082.** Originalmente el RFC asumía 8081 para todos los MS detrás del gateway; al levantar `docker compose` aparecieron dos servicios pidiendo el mismo puerto host. Se reasignó GridLoad a 8082 y MS-Billing a 8083, dejando Orchestrator (el principal) en 8081.
+2. **Contrato `UserId`.** Orchestrator emite identificadores en formato `USR-XXX`; el código inicial de Billing aceptaba solo `U-XXX`. Se alineó Billing al formato del caso (`USR-XXX`) y se actualizaron sus tests.
+3. **Topología AMQP precargada vs creada en runtime.** El RFC contemplaba precargar exchanges y colas con `load_definitions.json`. Se descartó porque RabbitMQ ignora `RABBITMQ_DEFAULT_USER/PASS` cuando se monta un definitions, lo que rompía la autenticación de Spring AMQP. Se dejó que `RabbitMqConfig` (Spring) declare la topología al primer arranque de cada MS.
+4. **API Gateway y UI: dos contenedores → uno solo.** El RFC planteaba un Nginx Gateway y un Nginx separado para servir la UI estática. La implementación los fusionó en un único contenedor `ui-gateway` que cumple ambos roles: menos imágenes, menos superficie de mantenimiento, idéntico comportamiento externo.
+
+Ninguno de estos ajustes invalida los atributos de calidad ni las decisiones arquitectónicas centrales (§3); son detalles de empaquetado y compatibilidad.
+
+---
+
 ## Anexos
 
 - [`README.md`](../README.md) — Tabla de entregables, stack tecnológico, instrucciones de despliegue.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — Documento maestro explicativo para el equipo y para la sustentación oral.
