@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres-billing:5432/billing
+  rabbitmq:
+    host: rabbitmq

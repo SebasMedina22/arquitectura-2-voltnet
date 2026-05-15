@@ -73,8 +73,8 @@ URLs principales tras levantar:
 
 | Capa | Tecnología | Por qué |
 |---|---|---|
-| Lenguaje | Java 25 LTS | Última LTS, soportada por Spring Boot 3.4+ |
-| Framework | Spring Boot 3.4 | Estándar de facto para microservicios JVM |
+| Lenguaje | Java 25 LTS | Última LTS, soportada por Spring Boot 3.5+ |
+| Framework | Spring Boot 3.5 | Estándar de facto para microservicios JVM |
 | Comunicación síncrona | OpenFeign | Cliente REST declarativo, integración nativa con Spring |
 | Comunicación asíncrona | RabbitMQ 3.13 + Spring AMQP | Más simple que Kafka para este escenario |
 | Persistencia SQL | MySQL 8 (Orchestrator), PostgreSQL 16 (Billing) | Persistencia políglota como exige la rúbrica |

@@ -77,7 +77,7 @@ Siguiendo la **clasificación estándar de atributos de calidad** del curso (Ren
 
 ### 3.1 Lenguaje y framework
 
-| Decisión | **Java 25 LTS + Spring Boot 3.4** |
+| Decisión | **Java 25 LTS + Spring Boot 3.5** |
 |---|---|
 | Alternativas evaluadas | Node.js/NestJS, Python/FastAPI, .NET 8 |
 | Justificación | (1) El profesor lo recomienda explícitamente en la guía del proyecto. (2) Ecosistema maduro para los patrones requeridos: Feign declarativo, Spring AMQP, springdoc-openapi, Micrometer + OpenTelemetry. (3) Equipo con experiencia en JVM. |
