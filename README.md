@@ -59,15 +59,14 @@ URLs principales tras levantar:
 
 | Servicio | URL | Credenciales |
 |---|---|---|
+| **UI (frontend) + API Gateway Nginx** | **http://localhost:8080** | — |
 | MS-ChargeOrchestrator Swagger | http://localhost:8081/swagger-ui.html | — |
 | MS-GridLoad Swagger | http://localhost:8082/swagger-ui.html | — |
 | MS-Billing Swagger | http://localhost:8083/swagger-ui.html | — |
 | RabbitMQ Management | http://localhost:15672 | voltnet / voltnet |
 | Prometheus | http://localhost:9090 | — |
-| Grafana (dashboard "VoltNet Health") | http://localhost:3000 | admin / admin (o anonymous viewer) |
+| Grafana (dashboard "VoltNet Health") | http://localhost:3000 | admin / admin (anonymous viewer permitido) |
 | Jaeger UI | http://localhost:16686 | — |
-| API Gateway (Nginx, Fase 6) | http://localhost | — |
-| UI (Fase 6) | http://localhost:5173 | — |
 
 ### Demo rápida de las 3 reglas de negocio
 
@@ -142,7 +141,7 @@ Para la justificación de cada decisión y el análisis de trade-offs, ver [`doc
 | MS-Billing (RabbitMQ + PostgreSQL + Outbox idempotente) | ✅ |
 | MS-ChargeOrchestrator (hexagonal, los 4 GoF, R1/R2/R3) | ✅ |
 | Docker Compose + Observabilidad (Prometheus/Grafana/Jaeger) | ✅ |
-| API Gateway Nginx + UI (bonus) | 🚧 |
-| Pulido final + RFC PDF | 🚧 |
+| **API Gateway Nginx + UI React (bonus)** | ✅ |
+| RFC PDF final | 🚧 |
 
 Para el diseño detallado y el análisis de trade-offs, ver [`docs/RFC.md`](docs/RFC.md).

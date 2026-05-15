@@ -14,6 +14,10 @@ ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/release
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 
+# curl para el HEALTHCHECK (eclipse-temurin slim no lo trae)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /build/target/ms-charge-orchestrator-0.1.0.jar app.jar
 COPY --from=builder /otel/opentelemetry-javaagent.jar /otel/opentelemetry-javaagent.jar
 
@@ -23,7 +27,7 @@ ENV SPRING_PROFILES_ACTIVE=docker
 
 EXPOSE 8081
 
-HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:8081/actuator/health | grep -q '"status":"UP"' || exit 1
+HEALTHCHECK --interval=15s --timeout=3s --start-period=45s --retries=3 \
+  CMD curl -fs http://localhost:8081/actuator/health | grep -q '"status":"UP"' || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
